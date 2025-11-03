@@ -58,12 +58,32 @@ async function extractCoordsFromShortLink(shortLink) {
 
 export async function extractCoordsFromLink(link) {
 	console.log('extractCoordsFromLink: входная строка', link)
-	// 1. Обычные ссылки — старый парсер
+
+	// 1. Если это короткая ссылка Google Maps — раскрываем через serverless-функцию
+	if (link.includes('maps.app.goo.gl/')) {
+		try {
+			const fullUrl = await unshortenGoogleLink(link)
+			console.log('unshortenGoogleLink:', fullUrl)
+			if (fullUrl) {
+				const coords = extractCoordsFromRegularLink(fullUrl)
+				console.log('extractCoordsFromRegularLink (после unshorten):', coords)
+				if (coords) return coords
+				// Если не нашли — пробуем как адрес
+				const apiCoords = await getCoordsByAddress(fullUrl)
+				console.log('getCoordsByAddress (после unshorten):', apiCoords)
+				return apiCoords
+			}
+		} catch (e) {
+			console.log('Ошибка при раскрытии короткой ссылки:', e)
+		}
+	}
+
+	// 2. Обычные ссылки — старый парсер
 	const coords = extractCoordsFromRegularLink(link)
 	console.log('extractCoordsFromRegularLink:', coords)
 	if (coords) return coords
 
-	// 2. Если не нашли — пробуем как адрес (или короткая ссылка)
+	// 3. Если не нашли — пробуем как адрес (или короткая ссылка)
 	const apiCoords = await getCoordsByAddress(link)
 	console.log('getCoordsByAddress:', apiCoords)
 	return apiCoords
