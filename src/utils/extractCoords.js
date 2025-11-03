@@ -161,3 +161,10 @@ function extractCoordsFromRegularLink(link) {
 	}
 	return null
 }
+
+export async function unshortenGoogleLink(shortUrl) {
+	const apiUrl = `/api/unshorten?url=${encodeURIComponent(shortUrl)}`
+	const response = await fetch(apiUrl)
+	const data = await response.json()
+	return data.finalUrl // это уже длинная ссылка Google Maps
+}
