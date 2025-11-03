@@ -132,13 +132,13 @@ function extractCoordsFromRegularLink(link) {
 			}
 		}
 		const patterns = [
+			/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/, // !3dLAT!4dLNG format — теперь первым!
 			/q=(-?\d+\.\d+),(-?\d+\.\d+)/, // q parameter
 			/ll=(-?\d+\.\d+),(-?\d+\.\d+)/, // ll parameter
 			/(@|-?\d+\.\d+),(-?\d+\.\d+)/, // @ format
 			/\/(-?\d+\.\d+),(-?\d+\.\d+)/, // path format
 			/place\/.*?@(-?\d+\.\d+),(-?\d+\.\d+)/, // place format
 			/dir\/.*?@(-?\d+\.\d+),(-?\d+\.\d+)/, // directions format
-			/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/, // !3dLAT!4dLNG format
 		]
 		for (const pattern of patterns) {
 			const match = link.match(pattern)
