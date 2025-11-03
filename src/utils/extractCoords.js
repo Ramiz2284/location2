@@ -65,10 +65,18 @@ export async function extractCoordsFromLink(link) {
 			const fullUrl = await unshortenGoogleLink(link)
 			console.log('unshortenGoogleLink:', fullUrl)
 			if (fullUrl) {
+				// 1.1. Сначала ищем placeId
+				const placeIdMatch = fullUrl.match(/placeid=([^&]+)/i)
+				if (placeIdMatch) {
+					const placeCoords = await getCoordsByPlaceId(placeIdMatch[1])
+					console.log('getCoordsByPlaceId (после unshorten):', placeCoords)
+					if (placeCoords) return placeCoords
+				}
+				// 1.2. Потом ищем координаты
 				const coords = extractCoordsFromRegularLink(fullUrl)
 				console.log('extractCoordsFromRegularLink (после unshorten):', coords)
 				if (coords) return coords
-				// Если не нашли — пробуем как адрес
+				// 1.3. Потом пробуем как адрес
 				const apiCoords = await getCoordsByAddress(fullUrl)
 				console.log('getCoordsByAddress (после unshorten):', apiCoords)
 				return apiCoords
@@ -78,12 +86,20 @@ export async function extractCoordsFromLink(link) {
 		}
 	}
 
-	// 2. Обычные ссылки — старый парсер
+	// 2. Для обычных ссылок — сначала ищем placeId
+	const placeIdMatch = link.match(/placeid=([^&]+)/i)
+	if (placeIdMatch) {
+		const placeCoords = await getCoordsByPlaceId(placeIdMatch[1])
+		console.log('getCoordsByPlaceId:', placeCoords)
+		if (placeCoords) return placeCoords
+	}
+
+	// 3. Потом координаты
 	const coords = extractCoordsFromRegularLink(link)
 	console.log('extractCoordsFromRegularLink:', coords)
 	if (coords) return coords
 
-	// 3. Если не нашли — пробуем как адрес (или короткая ссылка)
+	// 4. Потом адрес
 	const apiCoords = await getCoordsByAddress(link)
 	console.log('getCoordsByAddress:', apiCoords)
 	return apiCoords
