@@ -57,41 +57,44 @@ async function extractCoordsFromShortLink(shortLink) {
 }
 
 export async function extractCoordsFromLink(link) {
+	console.log('extractCoordsFromLink: входная строка', link)
 	// 1. Обычные ссылки — старый парсер
 	const coords = extractCoordsFromRegularLink(link)
+	console.log('extractCoordsFromRegularLink:', coords)
 	if (coords) return coords
 
 	// 2. Если не нашли — пробуем как адрес (или короткая ссылка)
-	return await getCoordsByAddress(link)
+	const apiCoords = await getCoordsByAddress(link)
+	console.log('getCoordsByAddress:', apiCoords)
+	return apiCoords
 }
 
 // Функция для извлечения координат из обычной (не короткой) ссылки
 function extractCoordsFromRegularLink(link) {
 	try {
-		// 1) Ищем координаты в любых параметрах URL
+		console.log('extractCoordsFromRegularLink: парсим', link)
 		const url = new URL(link)
-
-		// Проверяем все параметры URL на наличие координат
 		for (const [key, value] of url.searchParams.entries()) {
 			const coordMatch = value.match(/(-?\d+\.\d+),(-?\d+\.\d+)/)
 			if (coordMatch) {
+				console.log(
+					'extractCoordsFromRegularLink: найдено в параметрах',
+					coordMatch
+				)
 				return {
 					lat: parseFloat(coordMatch[1]),
 					lng: parseFloat(coordMatch[2]),
 				}
 			}
 		}
-
-		// Проверяем путь URL на наличие координат (включая @ и другие маркеры)
 		const pathMatch = url.pathname.match(/[!@]?(-?\d+\.\d+),(-?\d+\.\d+)/)
 		if (pathMatch) {
+			console.log('extractCoordsFromRegularLink: найдено в path', pathMatch)
 			return {
 				lat: parseFloat(pathMatch[1]),
 				lng: parseFloat(pathMatch[2]),
 			}
 		}
-
-		// 2) Проверяем стандартные форматы Google Maps
 		const patterns = [
 			/q=(-?\d+\.\d+),(-?\d+\.\d+)/, // q parameter
 			/ll=(-?\d+\.\d+),(-?\d+\.\d+)/, // ll parameter
@@ -101,18 +104,20 @@ function extractCoordsFromRegularLink(link) {
 			/dir\/.*?@(-?\d+\.\d+),(-?\d+\.\d+)/, // directions format
 			/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/, // !3dLAT!4dLNG format
 		]
-
 		for (const pattern of patterns) {
 			const match = link.match(pattern)
 			if (match) {
+				console.log(
+					'extractCoordsFromRegularLink: найдено по паттерну',
+					pattern,
+					match
+				)
 				return {
 					lat: parseFloat(match[1]),
 					lng: parseFloat(match[2]),
 				}
 			}
 		}
-
-		// 3) Проверяем параметры с координатами
 		const coordParams = [
 			'query',
 			'destination',
@@ -126,19 +131,24 @@ function extractCoordsFromRegularLink(link) {
 			if (url.searchParams.has(param)) {
 				const val = url.searchParams.get(param)
 				if (!val) continue
-
-				// Пробуем найти координаты в значении параметра
 				const coordMatch = val.match(/(-?\d+\.\d+),(-?\d+\.\d+)/)
 				if (coordMatch) {
+					console.log(
+						'extractCoordsFromRegularLink: найдено в',
+						param,
+						coordMatch
+					)
 					return {
 						lat: parseFloat(coordMatch[1]),
 						lng: parseFloat(coordMatch[2]),
 					}
 				}
-
-				// Проверяем, не являются ли значением просто две цифры через запятую
 				const parts = val.split(',').map(part => part.trim())
 				if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+					console.log(
+						'extractCoordsFromRegularLink: найдено как две цифры',
+						parts
+					)
 					return {
 						lat: parseFloat(parts[0]),
 						lng: parseFloat(parts[1]),
@@ -147,7 +157,7 @@ function extractCoordsFromRegularLink(link) {
 			}
 		}
 	} catch (e) {
-		console.log('Error parsing regular link:', e)
+		console.log('extractCoordsFromRegularLink: ошибка', e)
 	}
 	return null
 }
