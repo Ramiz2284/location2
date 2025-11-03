@@ -25,11 +25,11 @@ export default function MyMap({ points, route }) {
 			zoom={12}
 		>
 			{points.map((p, i) => (
-				<Marker key={i} position={[p.lat, p.lng]} />
+				<Marker key={i} position={{ lat: p.lat, lng: p.lng }} />
 			))}
 
 			{route.length > 1 && (
-				<Polyline positions={route.map(p => [p.lat, p.lng])} />
+				<Polyline path={route.map(p => ({ lat: p.lat, lng: p.lng }))} />
 			)}
 		</GoogleMap>
 	)
