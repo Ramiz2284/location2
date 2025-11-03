@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { extractCoordsFromLink } from '../utils/extractCoords'
+import { getCoordsByAddress } from '../utils/googleMapsApi'
 
 export default function LocationForm({ onAdd }) {
 	const [input, setInput] = useState('')
@@ -25,4 +26,13 @@ export default function LocationForm({ onAdd }) {
 			<button onClick={handleAdd}>Добавить</button>
 		</div>
 	)
+}
+
+export async function extractCoordsFromLink(link) {
+	// ...старый парсер...
+	const coords = extractCoordsFromRegularLink(link)
+	if (coords) return coords
+
+	// Если не нашли координаты — пробуем как адрес
+	return await getCoordsByAddress(link)
 }

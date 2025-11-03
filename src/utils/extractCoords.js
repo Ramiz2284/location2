@@ -1,4 +1,4 @@
-import { getCoordsByAddress, getCoordsByPlaceId } from './googleMapsApi'
+import { getCoordsByAddress } from './googleMapsApi'
 
 async function extractCoordsFromShortLink(shortLink) {
 	return new Promise(resolve => {
@@ -57,32 +57,12 @@ async function extractCoordsFromShortLink(shortLink) {
 }
 
 export async function extractCoordsFromLink(link) {
-	// 1. Если это короткая ссылка Google Maps
-	if (link.includes('maps.app.goo.gl/')) {
-		// Попробуем получить финальный URL через fetch (не сработает из браузера из-за CORS)
-		// Поэтому парсим placeId или адрес из самой ссылки, если возможно
-		// Например, если пользователь вставил короткую ссылку, попросите его вставить адрес или placeId вручную
-		// Или используйте prompt для ввода адреса:
-		const address = prompt(
-			'Вставьте адрес или название места для поиска координат через Google API:'
-		)
-		if (address) {
-			return await getCoordsByAddress(address)
-		}
-		return null
-	}
-
-	// 2. Обычные ссылки — старый парсер
+	// 1. Обычные ссылки — старый парсер
 	const coords = extractCoordsFromRegularLink(link)
 	if (coords) return coords
 
-	// 3. Если не нашли — попробуем вытащить placeId из ссылки и запросить через API
-	const placeIdMatch = link.match(/placeid=([^&]+)/i)
-	if (placeIdMatch) {
-		return await getCoordsByPlaceId(placeIdMatch[1])
-	}
-
-	return null
+	// 2. Если не нашли — пробуем как адрес (или короткая ссылка)
+	return await getCoordsByAddress(link)
 }
 
 // Функция для извлечения координат из обычной (не короткой) ссылки

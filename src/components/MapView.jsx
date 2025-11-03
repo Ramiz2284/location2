@@ -1,16 +1,29 @@
-import { MapContainer, Marker, Polyline, TileLayer } from 'react-leaflet'
+import {
+	GoogleMap,
+	Marker,
+	Polyline,
+	useJsApiLoader,
+} from '@react-google-maps/api'
 
-export default function MapView({ points, route }) {
+const containerStyle = {
+	width: '100%',
+	height: '400px',
+}
+
+export default function MyMap({ points, route }) {
 	const defaultPosition = points[0] || { lat: 36.8841, lng: 30.7056 }
+	const { isLoaded } = useJsApiLoader({
+		googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+	})
+
+	if (!isLoaded) return <div>Загрузка карты...</div>
 
 	return (
-		<MapContainer
-			center={[defaultPosition.lat, defaultPosition.lng]}
+		<GoogleMap
+			mapContainerStyle={containerStyle}
+			center={defaultPosition}
 			zoom={12}
-			style={{ height: '400px', width: '100%', marginTop: '20px' }}
 		>
-			<TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
-
 			{points.map((p, i) => (
 				<Marker key={i} position={[p.lat, p.lng]} />
 			))}
@@ -18,6 +31,6 @@ export default function MapView({ points, route }) {
 			{route.length > 1 && (
 				<Polyline positions={route.map(p => [p.lat, p.lng])} />
 			)}
-		</MapContainer>
+		</GoogleMap>
 	)
 }
