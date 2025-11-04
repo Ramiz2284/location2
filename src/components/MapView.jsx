@@ -1,7 +1,7 @@
 import {
 	GoogleMap,
-	InfoWindow,
 	Marker,
+	OverlayView,
 	Polyline,
 	useJsApiLoader,
 } from '@react-google-maps/api'
@@ -28,7 +28,7 @@ export default function MapView({ points, route }) {
 		>
 			{points.map((p, i) => (
 				<div key={i}>
-					{/* ✅ КРУГЛЫЙ МАРКЕР С НОМЕРОМ */}
+					{/* ✅ Круглый маркер */}
 					<Marker
 						position={{ lat: p.lat, lng: p.lng }}
 						label={{
@@ -47,21 +47,34 @@ export default function MapView({ points, route }) {
 						}}
 					/>
 
-					{/* ✅ ИМЯ ПОД МАРКЕРОМ, ВСЕГДА ПОКАЗЫВАЕТСЯ */}
-					<InfoWindow
+					{/* ✅ Имя под маркером (без рамки) */}
+					<OverlayView
 						position={{ lat: p.lat, lng: p.lng }}
-						options={{ pixelOffset: new window.google.maps.Size(0, 25) }} // смещение вниз
+						mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
 					>
 						<div
-							style={{ fontSize: '14px', fontWeight: 'bold', color: '#007aff' }}
+							style={{
+								position: 'relative',
+								top: '25px',
+								textAlign: 'center',
+								color: '#007aff',
+								fontWeight: 'bold',
+								fontSize: '13px',
+								background: 'white',
+								padding: '2px 6px',
+								borderRadius: '6px',
+								boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+								whiteSpace: 'nowrap',
+								transform: 'translateX(-50%)',
+								left: '50%',
+							}}
 						>
 							{i + 1}. {p.name}
 						</div>
-					</InfoWindow>
+					</OverlayView>
 				</div>
 			))}
 
-			{/* ✅ Маршрут */}
 			{route.length > 1 && (
 				<Polyline
 					path={route.map(p => ({ lat: p.lat, lng: p.lng }))}
