@@ -79,7 +79,7 @@ export default function MapView({ points, route }) {
 				<Polyline
 					path={route.map(p => ({ lat: p.lat, lng: p.lng }))}
 					options={{
-						strokeColor: '#007aff',
+						strokeColor: '#ff0800ff',
 						strokeOpacity: 0.9,
 						strokeWeight: 5,
 					}}
