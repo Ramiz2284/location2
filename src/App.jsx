@@ -1,4 +1,3 @@
-import axios from 'axios'
 import { useEffect, useState } from 'react'
 import LocationForm from './components/LocationForm'
 import MapView from './components/MapView'
@@ -13,13 +12,14 @@ export default function App() {
 	const [gps, setGps] = useState(null)
 	const [route, setRoute] = useState([])
 
-	// Сохраняем точки
+	// ✅ Сохраняем точки
 	useEffect(() => {
 		localStorage.setItem('points', JSON.stringify(points))
 	}, [points])
 
-	function addPoint(coords) {
-		setPoints([...points, coords])
+	// ✅ Добавить точку (lat, lng, name)
+	function addPoint(point) {
+		setPoints(prev => [...prev, point])
 	}
 
 	function clearPoints() {
@@ -27,7 +27,7 @@ export default function App() {
 		setRoute([])
 	}
 
-	// Получение текущей локации
+	// ✅ Получить текущую геопозицию
 	function getMyPosition() {
 		navigator.geolocation.getCurrentPosition(
 			pos => {
@@ -40,10 +40,15 @@ export default function App() {
 		)
 	}
 
-	// Оптимизация маршрута через OpenRouteService
+	// ✅ Построение маршрута через Google Maps
 	async function buildRoute() {
 		if (points.length < 2) {
 			alert('Нужно минимум 2 точки')
+			return
+		}
+
+		if (!window.google) {
+			alert('Google Maps не загрузился')
 			return
 		}
 
@@ -58,38 +63,47 @@ export default function App() {
 			startCoords = points[start]
 		}
 
-		const all = [startCoords, ...points]
+		const directionsService = new window.google.maps.DirectionsService()
 
-		const body = {
-			coordinates: all.map(p => [p.lng, p.lat]),
-			format: 'geojson',
-		}
-
-		// Бесплатный OpenRouteService demo key (нужно заменить позже своим)
-		const token = '5b3ce3597851110001cf6248xxxxxxxxxxxxxxxx'
-
-		const res = await axios.post(
-			'https://api.openrouteservice.org/v2/directions/driving-car/geojson',
-			body,
-			{
-				headers: { Authorization: token },
-			}
-		)
-
-		const coords = res.data.features[0].geometry.coordinates.map(c => ({
-			lat: c[1],
-			lng: c[0],
+		// ✅ Преобразуем точки в формат Google
+		const waypoints = points.map(p => ({
+			location: { lat: p.lat, lng: p.lng },
+			stopover: true,
 		}))
 
-		setRoute(coords)
+		const origin = { lat: startCoords.lat, lng: startCoords.lng }
+		const destination = waypoints[waypoints.length - 1].location
+
+		directionsService.route(
+			{
+				origin,
+				destination,
+				waypoints,
+				travelMode: window.google.maps.TravelMode.DRIVING,
+				optimizeWaypoints: true, // ✅ Google сам оптимизирует порядок
+			},
+			(result, status) => {
+				if (status === 'OK') {
+					const path = result.routes[0].overview_path.map(p => ({
+						lat: p.lat(),
+						lng: p.lng(),
+					}))
+					setRoute(path)
+				} else {
+					alert('Ошибка построения маршрута: ' + status)
+				}
+			}
+		)
 	}
 
 	return (
 		<div style={{ padding: '20px' }}>
 			<h2>Маршрут доставки</h2>
 
+			{/* Добавление точки */}
 			<LocationForm onAdd={addPoint} />
 
+			{/* GPS */}
 			<button onClick={getMyPosition}>Моё местоположение</button>
 			{gps && (
 				<p>
@@ -97,23 +111,25 @@ export default function App() {
 				</p>
 			)}
 
+			{/* Список точек */}
 			<h3>Точки:</h3>
 			<ul>
 				{points.map((p, i) => (
 					<li key={i}>
-						{p.lat.toFixed(5)}, {p.lng.toFixed(5)}
+						<b>{p.name}</b> — {p.lat.toFixed(5)}, {p.lng.toFixed(5)}
 					</li>
 				))}
 			</ul>
 
 			{points.length > 0 && <button onClick={clearPoints}>Очистить</button>}
 
+			{/* Выбор старта */}
 			<h3>Стартовая точка:</h3>
 			<select value={start} onChange={e => setStart(e.target.value)}>
 				<option value='gps'>Моё местоположение</option>
 				{points.map((p, i) => (
 					<option value={i} key={i}>
-						{p.lat.toFixed(3)}, {p.lng.toFixed(3)}
+						{p.name}
 					</option>
 				))}
 			</select>
