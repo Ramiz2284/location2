@@ -57,7 +57,7 @@ export default function MapView({ points, route }) {
 								position: 'relative',
 								top: '25px',
 								textAlign: 'center',
-								color: '#007aff',
+								color: '#ff0000ff',
 								fontWeight: 'bold',
 								fontSize: '13px',
 								background: 'white',
