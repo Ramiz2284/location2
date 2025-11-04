@@ -5,7 +5,6 @@ import {
 	Polyline,
 	useJsApiLoader,
 } from '@react-google-maps/api'
-import { useState } from 'react'
 
 const containerStyle = {
 	width: '100%',
@@ -13,8 +12,6 @@ const containerStyle = {
 }
 
 export default function MapView({ points, route }) {
-	const [selectedPoint, setSelectedPoint] = useState(null)
-
 	const defaultPosition = points[0] || { lat: 36.8841, lng: 30.7056 }
 
 	const { isLoaded } = useJsApiLoader({
@@ -29,46 +26,42 @@ export default function MapView({ points, route }) {
 			center={defaultPosition}
 			zoom={12}
 		>
-			{/* ✅ Маркеры с номерами + кликабельность */}
 			{points.map((p, i) => (
-				<Marker
-					key={i}
-					position={{ lat: p.lat, lng: p.lng }}
-					label={{
-						text: String(i + 1),
-						color: 'white',
-						fontSize: '14px',
-						fontWeight: 'bold',
-					}}
-					icon={{
-						path: window.google.maps.SymbolPath.CIRCLE,
-						scale: 18,
-						fillColor: '#007aff',
-						fillOpacity: 1,
-						strokeWeight: 2,
-						strokeColor: '#ffffff',
-					}}
-					onClick={() => setSelectedPoint({ ...p, index: i })}
-				/>
+				<div key={i}>
+					{/* ✅ КРУГЛЫЙ МАРКЕР С НОМЕРОМ */}
+					<Marker
+						position={{ lat: p.lat, lng: p.lng }}
+						label={{
+							text: String(i + 1),
+							color: 'white',
+							fontSize: '14px',
+							fontWeight: 'bold',
+						}}
+						icon={{
+							path: window.google.maps.SymbolPath.CIRCLE,
+							scale: 18,
+							fillColor: '#007aff',
+							fillOpacity: 1,
+							strokeWeight: 2,
+							strokeColor: '#ffffff',
+						}}
+					/>
+
+					{/* ✅ ИМЯ ПОД МАРКЕРОМ, ВСЕГДА ПОКАЗЫВАЕТСЯ */}
+					<InfoWindow
+						position={{ lat: p.lat, lng: p.lng }}
+						options={{ pixelOffset: new window.google.maps.Size(0, 25) }} // смещение вниз
+					>
+						<div
+							style={{ fontSize: '14px', fontWeight: 'bold', color: '#007aff' }}
+						>
+							{i + 1}. {p.name}
+						</div>
+					</InfoWindow>
+				</div>
 			))}
 
-			{/* ✅ Имя клиента возле маркера при клике */}
-			{selectedPoint && (
-				<InfoWindow
-					position={{ lat: selectedPoint.lat, lng: selectedPoint.lng }}
-					onCloseClick={() => setSelectedPoint(null)}
-				>
-					<div style={{ fontSize: '14px' }}>
-						<b>
-							{selectedPoint.index + 1}. {selectedPoint.name}
-						</b>
-						<br />
-						{selectedPoint.lat.toFixed(5)}, {selectedPoint.lng.toFixed(5)}
-					</div>
-				</InfoWindow>
-			)}
-
-			{/* ✅ Линия маршрута */}
+			{/* ✅ Маршрут */}
 			{route.length > 1 && (
 				<Polyline
 					path={route.map(p => ({ lat: p.lat, lng: p.lng }))}
