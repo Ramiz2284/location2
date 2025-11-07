@@ -1,5 +1,13 @@
 import { getCoordsByAddress, getCoordsByPlaceId } from './googleMapsApi'
 
+// Показываем алерт (для мобильного без DevTools) и логируем в консоль
+function notifyError(msg, detail) {
+	console.warn('[coords:error]', msg, detail || '')
+	try {
+		alert(msg)
+	} catch (_) {}
+}
+
 async function extractCoordsFromShortLink(shortLink) {
 	return new Promise(resolve => {
 		// Открываем ссылку в новом окне (минимальные размеры)
@@ -59,30 +67,60 @@ async function extractCoordsFromShortLink(shortLink) {
 export async function extractCoordsFromLink(link) {
 	console.log('extractCoordsFromLink: входная строка', link)
 
+	if (!link || link.length < 5) {
+		notifyError(
+			'Пустая или слишком короткая строка. Вставь ссылку Google Maps.'
+		)
+		return null
+	}
+
+	// Быстрая проверка формата
+	if (!/(google\.com\/maps|maps\.app\.goo\.gl)/i.test(link)) {
+		notifyError(
+			'Это не похоже на ссылку Google Maps. Открой точку в картах и скопируй ссылку заново.'
+		)
+		// Не прерываем — вдруг это адрес (улица, город) и удастся геокодировать
+	}
+
 	// 1. Если это короткая ссылка Google Maps — раскрываем через serverless-функцию
 	if (link.includes('maps.app.goo.gl/')) {
 		try {
 			const fullUrl = await unshortenGoogleLink(link)
 			console.log('unshortenGoogleLink:', fullUrl)
-			if (fullUrl) {
-				// 1.1. Сначала ищем placeId
-				const placeIdMatch = fullUrl.match(/placeid=([^&]+)/i)
-				if (placeIdMatch) {
-					const placeCoords = await getCoordsByPlaceId(placeIdMatch[1])
-					console.log('getCoordsByPlaceId (после unshorten):', placeCoords)
-					if (placeCoords) return placeCoords
-				}
-				// 1.2. Потом ищем координаты
-				const coords = extractCoordsFromRegularLink(fullUrl)
-				console.log('extractCoordsFromRegularLink (после unshorten):', coords)
-				if (coords) return coords
-				// 1.3. Потом пробуем как адрес
-				const apiCoords = await getCoordsByAddress(fullUrl)
-				console.log('getCoordsByAddress (после unshorten):', apiCoords)
-				return apiCoords
+			if (!fullUrl) {
+				notifyError(
+					'Не удалось раскрыть короткую ссылку maps.app.goo.gl. Попробуй открыть её вручную и скопировать длинную.'
+				)
+				return null
 			}
+			// 1.1. Сначала ищем placeId
+			const placeIdMatch = fullUrl.match(/placeid=([^&]+)/i)
+			if (placeIdMatch) {
+				const placeCoords = await getCoordsByPlaceId(placeIdMatch[1])
+				console.log('getCoordsByPlaceId (после unshorten):', placeCoords)
+				if (placeCoords) return placeCoords
+				notifyError(
+					'place_id найден, но координаты не получены (Geocoding API вернул пусто).'
+				)
+			}
+			// 1.2. Потом ищем координаты
+			const coords = extractCoordsFromRegularLink(fullUrl)
+			console.log('extractCoordsFromRegularLink (после unshorten):', coords)
+			if (coords) return coords
+			// 1.3. Потом пробуем как адрес
+			const apiCoords = await getCoordsByAddress(fullUrl)
+			console.log('getCoordsByAddress (после unshorten):', apiCoords)
+			if (apiCoords) return apiCoords
+			notifyError(
+				'Не удалось извлечь координаты из раскрытой ссылки. Скопируй точку из Google Maps ещё раз.'
+			)
+			return null
 		} catch (e) {
 			console.log('Ошибка при раскрытии короткой ссылки:', e)
+			notifyError(
+				'Ошибка при работе с короткой ссылкой (возможно блокировка всплывающих окон). Открой ссылку вручную и скопируй из адресной строки.'
+			)
+			return null
 		}
 	}
 
@@ -92,6 +130,9 @@ export async function extractCoordsFromLink(link) {
 		const placeCoords = await getCoordsByPlaceId(placeIdMatch[1])
 		console.log('getCoordsByPlaceId:', placeCoords)
 		if (placeCoords) return placeCoords
+		notifyError(
+			'place_id найден, но координаты не получены. Возможно ограничения API или неверный ключ.'
+		)
 	}
 
 	// 3. Потом координаты
@@ -102,7 +143,11 @@ export async function extractCoordsFromLink(link) {
 	// 4. Потом адрес
 	const apiCoords = await getCoordsByAddress(link)
 	console.log('getCoordsByAddress:', apiCoords)
-	return apiCoords
+	if (apiCoords) return apiCoords
+	notifyError(
+		'Не удалось получить координаты ни напрямую из ссылки, ни через Geocoding API. Проверь формат: открой точку Google Maps и скопируй адрес полностью.'
+	)
+	return null
 }
 
 // Функция для извлечения координат из обычной (не короткой) ссылки
