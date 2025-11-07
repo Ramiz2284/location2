@@ -93,6 +93,31 @@ export async function extractCoordsFromLink(link) {
 				)
 				return null
 			}
+
+			// Популярные обёртки: https://www.google.com/url?...&q=<inner> или &url=&link=
+			try {
+				const u = new URL(fullUrl)
+				const wrapped =
+					u.searchParams.get('q') ||
+					u.searchParams.get('url') ||
+					u.searchParams.get('link')
+				if (wrapped) {
+					const inner = decodeURIComponent(wrapped)
+					console.log('unwrap from finalUrl:', inner)
+					// 1) Пытаемся как place_id
+					const innerPlaceId = inner.match(/placeid=([^&]+)/i)
+					if (innerPlaceId) {
+						const innerPlaceCoords = await getCoordsByPlaceId(innerPlaceId[1])
+						if (innerPlaceCoords) return innerPlaceCoords
+					}
+					// 2) Пробуем извлечь координаты из URL
+					const innerCoords = extractCoordsFromRegularLink(inner)
+					if (innerCoords) return innerCoords
+					// 3) Как адрес
+					const innerApi = await getCoordsByAddress(inner)
+					if (innerApi) return innerApi
+				}
+			} catch (_) {}
 			// 1.1. Сначала ищем placeId
 			const placeIdMatch = fullUrl.match(/placeid=([^&]+)/i)
 			if (placeIdMatch) {
