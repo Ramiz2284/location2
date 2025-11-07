@@ -69,7 +69,7 @@ export default function MapView({ points, route }) {
 								left: '50%',
 							}}
 						>
-							{i + 1}. {p.name}
+							{p.name}
 						</div>
 					</OverlayView>
 				</div>
