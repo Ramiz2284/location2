@@ -66,13 +66,24 @@ export default function App() {
 		const directionsService = new window.google.maps.DirectionsService()
 
 		// ✅ Преобразуем точки в формат Google
-		const waypoints = points.map(p => ({
+		const origin = { lat: startCoords.lat, lng: startCoords.lng }
+		const destination = {
+			lat: points[points.length - 1].lat,
+			lng: points[points.length - 1].lng,
+		}
+
+		// ✅ Промежуточные точки (все кроме последней)
+		const waypoints = points.slice(0, -1).map(p => ({
 			location: { lat: p.lat, lng: p.lng },
 			stopover: true,
 		}))
 
-		const origin = { lat: startCoords.lat, lng: startCoords.lng }
-		const destination = waypoints[waypoints.length - 1].location
+		console.log('🚗 Строим маршрут:', {
+			origin,
+			destination,
+			waypoints,
+			pointsCount: points.length,
+		})
 
 		directionsService.route(
 			{
@@ -83,13 +94,17 @@ export default function App() {
 				optimizeWaypoints: true, // ✅ Google сам оптимизирует порядок
 			},
 			(result, status) => {
+				console.log('📍 Результат Directions API:', status, result)
+
 				if (status === 'OK') {
 					const path = result.routes[0].overview_path.map(p => ({
 						lat: p.lat(),
 						lng: p.lng(),
 					}))
 					setRoute(path)
+					console.log('✅ Маршрут построен, точек:', path.length)
 				} else {
+					console.error('❌ Ошибка Directions API:', status, result)
 					alert('Ошибка построения маршрута: ' + status)
 				}
 			}
