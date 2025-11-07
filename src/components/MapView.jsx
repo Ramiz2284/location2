@@ -57,16 +57,14 @@ export default function MapView({ points, route }) {
 								position: 'relative',
 								top: '25px',
 								textAlign: 'center',
-								color: '#ff0000ff',
+								color: '#000000',
 								fontWeight: 'bold',
 								fontSize: '13px',
-								background: 'white',
-								padding: '2px 6px',
-								borderRadius: '6px',
-								boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
 								whiteSpace: 'nowrap',
 								transform: 'translateX(-50%)',
 								left: '50%',
+								textShadow:
+									'1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white',
 							}}
 						>
 							{p.name}
