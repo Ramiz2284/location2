@@ -14,17 +14,14 @@ export async function getCoordsByAddress(address) {
 }
 
 export async function getCoordsByPlaceId(placeId) {
-	const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry&key=${GOOGLE_MAPS_API_KEY}`
+	// ✅ Используем Geocoding API вместо Places API (работает с фронтенда)
+	const url = `https://maps.googleapis.com/maps/api/geocode/json?place_id=${placeId}&key=${GOOGLE_MAPS_API_KEY}`
 	const response = await fetch(url)
 	const data = await response.json()
-	if (
-		data.status === 'OK' &&
-		data.result &&
-		data.result.geometry &&
-		data.result.geometry.location
-	) {
-		const loc = data.result.geometry.location
+	if (data.status === 'OK' && data.results.length > 0) {
+		const loc = data.results[0].geometry.location
 		return { lat: loc.lat, lng: loc.lng }
 	}
+	console.error('getCoordsByPlaceId error:', data.status, data)
 	return null
 }

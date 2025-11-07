@@ -1,4 +1,4 @@
-import { getCoordsByAddress } from './googleMapsApi'
+import { getCoordsByAddress, getCoordsByPlaceId } from './googleMapsApi'
 
 async function extractCoordsFromShortLink(shortLink) {
 	return new Promise(resolve => {
