@@ -91,7 +91,58 @@ export async function extractCoordsFromLink(link) {
 				notifyError(
 					'Не удалось раскрыть короткую ссылку maps.app.goo.gl. Попробуй открыть её вручную и скопировать длинную.'
 				)
+				// Fallback через iframe
+				const iframeCoords = await tryExtractViaIframe(link)
+				if (iframeCoords) return iframeCoords
+				// Если не удалось — возвращаем null
 				return null
+			}
+			// Fallback: попытка раскрыть короткую ссылку через iframe и получить document.referrer
+			async function tryExtractViaIframe(shortLink) {
+				return new Promise(resolve => {
+					let done = false
+					const iframe = document.createElement('iframe')
+					iframe.style.width = '1px'
+					iframe.style.height = '1px'
+					iframe.style.position = 'absolute'
+					iframe.style.left = '-9999px'
+					iframe.style.top = '-9999px'
+					iframe.src = shortLink
+					document.body.appendChild(iframe)
+
+					function cleanup() {
+						if (iframe && iframe.parentNode)
+							iframe.parentNode.removeChild(iframe)
+						done = true
+					}
+
+					let tries = 0
+					const maxTries = 30 // ~3 секунды
+					const interval = setInterval(() => {
+						tries++
+						try {
+							// Иногда document.referrer становится доступен
+							const ref = iframe.contentWindow.document.referrer
+							if (ref && ref !== shortLink && ref !== 'about:blank') {
+								cleanup()
+								clearInterval(interval)
+								// Пытаемся извлечь координаты из реферера
+								const coords = extractCoordsFromRegularLink(ref)
+								if (coords) {
+									resolve(coords)
+									return
+								}
+							}
+						} catch (e) {
+							// cross-origin, игнорируем
+						}
+						if (tries >= maxTries) {
+							cleanup()
+							clearInterval(interval)
+							resolve(null)
+						}
+					}, 100)
+				})
 			}
 
 			// Популярные обёртки: https://www.google.com/url?...&q=<inner> или &url=&link=
