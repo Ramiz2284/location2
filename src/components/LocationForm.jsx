@@ -6,6 +6,7 @@ export default function LocationForm({ onAdd }) {
 	const [name, setName] = useState('')
 	const [highlight, setHighlight] = useState(false)
 	const [shortLink, setShortLink] = useState('')
+	const [loading, setLoading] = useState(false)
 
 	async function handleAdd() {
 		const coords = await extractCoordsFromLink(input)
@@ -43,23 +44,55 @@ export default function LocationForm({ onAdd }) {
 		} catch (e) {}
 	}
 
-	function handleUnshortenLink() {
+	async function handleUnshortenLink() {
 		if (!shortLink.trim()) {
 			alert('Вставь короткую ссылку Google Maps!')
 			return
 		}
-		// Открываем unshorten.me с короткой ссылкой
-		const unshortenUrl = `https://unshorten.me/?url=${encodeURIComponent(
-			shortLink
-		)}`
-		window.open(unshortenUrl, '_blank')
 
-		// Инструкция для пользователя
-		setTimeout(() => {
-			alert(
-				'В открывшемся окне скопируй раскрытую длинную ссылку и вставь её в поле "Вставь ссылку Google Maps" ниже.'
+		setLoading(true)
+
+		try {
+			// Используем API unshorten.me с ключом
+			const apiKey = import.meta.env.VITE_UNSHORTEN_API_KEY
+			const apiUrl = `https://unshorten.me/json/${encodeURIComponent(
+				shortLink
+			)}`
+
+			const headers = {}
+			if (apiKey) {
+				headers['Authorization'] = `Token ${apiKey}`
+			}
+
+			const response = await fetch(apiUrl, { headers })
+			const data = await response.json()
+
+			if (data.success && data.resolved_url) {
+				// Автоматически вставляем длинную ссылку в основной инпут
+				setInput(data.resolved_url)
+				setHighlight(true)
+				setTimeout(() => setHighlight(false), 1500)
+				alert('✅ Длинная ссылка получена и вставлена в поле ниже!')
+			} else if (data.error) {
+				alert(`Ошибка: ${data.error}`)
+			} else {
+				alert('Не удалось раскрыть ссылку. Попробуй вручную через unshorten.me')
+				// Открываем сайт как fallback
+				window.open(
+					`https://unshorten.me/?url=${encodeURIComponent(shortLink)}`,
+					'_blank'
+				)
+			}
+		} catch (e) {
+			console.error('Ошибка API unshorten.me:', e)
+			alert('Ошибка подключения к API. Открываю сайт вручную...')
+			window.open(
+				`https://unshorten.me/?url=${encodeURIComponent(shortLink)}`,
+				'_blank'
 			)
-		}, 500)
+		} finally {
+			setLoading(false)
+		}
 	}
 
 	return (
@@ -77,8 +110,12 @@ export default function LocationForm({ onAdd }) {
 				onChange={e => setShortLink(e.target.value)}
 				placeholder='Вставь короткую ссылку (maps.app.goo.gl)'
 			/>
-			<button style={{ marginBottom: '12px' }} onClick={handleUnshortenLink}>
-				Открыть в unshorten.me
+			<button
+				style={{ marginBottom: '12px' }}
+				onClick={handleUnshortenLink}
+				disabled={loading}
+			>
+				{loading ? 'Получаю длинную ссылку...' : 'Получить длинную ссылку'}
 			</button>
 
 			{/* поле для ссылки */}
