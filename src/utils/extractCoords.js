@@ -1,4 +1,8 @@
-import { getCoordsByAddress, getCoordsByPlaceId } from './googleMapsApi'
+import {
+	getCoordsByAddress,
+	getCoordsByPlaceId,
+	getCoordsByTextQuery,
+} from './googleMapsApi'
 
 // Показываем алерт (для мобильного без DevTools) и логируем в консоль
 function notifyError(msg, detail) {
@@ -238,6 +242,13 @@ export async function extractCoordsFromLink(link) {
 			if (apiCoords) {
 				console.log('getCoordsByAddress (из q):', apiCoords)
 				return apiCoords
+			}
+
+			// Если геокодирование не дало результат — пробуем Places Text Search
+			const textCoords = await getCoordsByTextQuery(decodedQ)
+			if (textCoords) {
+				console.log('getCoordsByTextQuery (из q):', textCoords)
+				return textCoords
 			}
 		}
 	} catch (e) {
