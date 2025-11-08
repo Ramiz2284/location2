@@ -247,6 +247,27 @@ export async function extractCoordsFromLink(link) {
 		console.log('resolveLinkForCoords (final fallback):', finalResolved)
 		return finalResolved
 	}
+
+	// 6. Последний fallback: если есть параметр q — пробуем геокодирование через Maps JS API Geocoder
+	try {
+		const url = new URL(link)
+		const qParam = url.searchParams.get('q')
+		if (qParam && !/^-?\d+\.\d+,-?\d+\.\d+$/.test(qParam)) {
+			// q не является координатами "lat,lng" — пробуем как адрес
+			console.log(
+				'Найден текстовый q, пробуем geocodeAddress (Maps JS API):',
+				qParam
+			)
+			const geocoded = await geocodeAddress(decodeURIComponent(qParam))
+			if (geocoded) {
+				console.log('geocodeAddress успешно:', geocoded)
+				return geocoded
+			}
+		}
+	} catch (e) {
+		console.log('Ошибка при финальном geocode:', e)
+	}
+
 	notifyError(
 		'Не удалось получить координаты в link-only режиме. Проверь: открой точку Google Maps, скопируй именно адрес страницы места (с !3d...!4d...).'
 	)

@@ -1,24 +1,52 @@
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+// Используем встроенный Geocoder из Maps JavaScript API вместо прямых HTTP-запросов.
+// Это безопаснее и правильнее для клиентских приложений.
 
-// Оставляем только функцию по place_id (Geocoding API). Адресный и текстовый поиск удалены (link-only режим).
-export async function getCoordsByPlaceId(placeId) {
-	if (!placeId) return null
-	try {
-		const url = `https://maps.googleapis.com/maps/api/geocode/json?place_id=${placeId}&key=${GOOGLE_MAPS_API_KEY}`
-		const response = await fetch(url)
-		const data = await response.json()
-		if (data.status === 'OK' && data.results.length > 0) {
-			const loc = data.results[0].geometry.location
-			return { lat: loc.lat, lng: loc.lng }
-		}
-		console.warn(
-			'getCoordsByPlaceId no results:',
-			data.status,
-			data.error_message
-		)
-		return null
-	} catch (e) {
-		console.error('getCoordsByPlaceId exception:', e)
+// Геокодирование адреса через window.google.maps.Geocoder (fallback для q=... параметра)
+export async function geocodeAddress(address) {
+	if (!address || typeof address !== 'string') return null
+	if (!window.google?.maps?.Geocoder) {
+		console.warn('[geocodeAddress] Google Maps API not loaded yet')
 		return null
 	}
+
+	const geocoder = new window.google.maps.Geocoder()
+
+	return new Promise(resolve => {
+		geocoder.geocode({ address }, (results, status) => {
+			if (status === 'OK' && results?.[0]?.geometry?.location) {
+				const loc = results[0].geometry.location
+				const coords = { lat: loc.lat(), lng: loc.lng() }
+				console.log('[geocodeAddress] success:', address, coords)
+				resolve(coords)
+			} else {
+				console.warn('[geocodeAddress] failed:', status, address)
+				resolve(null)
+			}
+		})
+	})
+}
+
+// Геокодирование по place_id через window.google.maps.Geocoder
+export async function getCoordsByPlaceId(placeId) {
+	if (!placeId) return null
+	if (!window.google?.maps?.Geocoder) {
+		console.warn('[getCoordsByPlaceId] Google Maps API not loaded yet')
+		return null
+	}
+
+	const geocoder = new window.google.maps.Geocoder()
+
+	return new Promise(resolve => {
+		geocoder.geocode({ placeId }, (results, status) => {
+			if (status === 'OK' && results?.[0]?.geometry?.location) {
+				const loc = results[0].geometry.location
+				const coords = { lat: loc.lat(), lng: loc.lng() }
+				console.log('[getCoordsByPlaceId] success:', placeId, coords)
+				resolve(coords)
+			} else {
+				console.warn('[getCoordsByPlaceId] failed:', status, placeId)
+				resolve(null)
+			}
+		})
+	})
 }
