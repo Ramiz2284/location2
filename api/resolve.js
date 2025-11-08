@@ -18,6 +18,24 @@ export default async function handler(req, res) {
 			res.status(200).json({ source: 'redirect', coords: directCoords })
 			return
 		}
+		// Try resolving via CID if present (link-only, no text). Some q/ftid links include a CID in hex.
+		const cid = extractCid(url) || extractCid(final)
+		if (cid) {
+			const cidUrl = `https://maps.google.com/?cid=${cid}`
+			const cidFinal = await fetchFollow(cidUrl)
+			const cidCoords = extractFromString(cidFinal)
+			if (cidCoords) {
+				res.status(200).json({ source: 'cid', coords: cidCoords })
+				return
+			}
+			const cidEmbed = appendParam(cidFinal, 'output', 'embed')
+			const cidHtml = await fetchText(cidEmbed)
+			const cidHtmlCoords = extractFromString(cidHtml)
+			if (cidHtmlCoords) {
+				res.status(200).json({ source: 'cid-embed', coords: cidHtmlCoords })
+				return
+			}
+		}
 		// Try embed
 		const embedUrl = appendParam(final, 'output', 'embed')
 		const html = await fetchText(embedUrl)
@@ -73,5 +91,26 @@ function extractFromString(str) {
 		/center"?:\s*\{\s*"?lat"?\s*:\s*(-?\d+\.\d+)\s*,\s*"?lng"?\s*:\s*(-?\d+\.\d+)/
 	)
 	if (m3) return { lat: parseFloat(m3[1]), lng: parseFloat(m3[2]) }
+	return null
+}
+// Extract CID (decimal) from URL parameters. Supports:
+// - direct cid=1234567890
+// - ftid=0x...:0xHEX (take second hex as CID, convert to decimal)
+function extractCid(u) {
+	try {
+		const urlObj = new URL(u)
+		const direct = urlObj.searchParams.get('cid')
+		if (direct) return direct
+		const ftid = urlObj.searchParams.get('ftid')
+		if (ftid) {
+			const m = ftid.match(/:0x([0-9a-fA-F]+)/)
+			if (m) {
+				try {
+					const dec = BigInt('0x' + m[1]).toString(10)
+					return dec
+				} catch (_) {}
+			}
+		}
+	} catch (_) {}
 	return null
 }
