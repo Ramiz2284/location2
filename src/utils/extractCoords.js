@@ -214,7 +214,24 @@ export async function extractCoordsFromLink(link) {
 	console.log('extractCoordsFromRegularLink:', coords)
 	if (coords) return coords
 
-	// 4. Потом адрес
+	// 4. Если есть параметр q с текстом (название места), пробуем через Geocoding API
+	try {
+		const url = new URL(link)
+		const qParam = url.searchParams.get('q')
+		if (qParam && !/^-?\d+\.\d+,-?\d+\.\d+$/.test(qParam)) {
+			// Это не координаты, а название/адрес
+			console.log('Найден параметр q с текстом:', qParam)
+			const apiCoords = await getCoordsByAddress(qParam)
+			if (apiCoords) {
+				console.log('getCoordsByAddress (из q):', apiCoords)
+				return apiCoords
+			}
+		}
+	} catch (e) {
+		console.log('Ошибка при проверке параметра q:', e)
+	}
+
+	// 5. Потом адрес из всей ссылки
 	const apiCoords = await getCoordsByAddress(link)
 	console.log('getCoordsByAddress:', apiCoords)
 	if (apiCoords) return apiCoords

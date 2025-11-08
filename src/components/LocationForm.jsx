@@ -78,13 +78,29 @@ export default function LocationForm({ onAdd }) {
 			const data = await response.json()
 
 			if (data.success && data.resolved_url) {
+				let finalUrl = data.resolved_url
+
+				// Если это страница consent.google.com, извлекаем настоящую ссылку из параметра continue
+				if (finalUrl.includes('consent.google.com')) {
+					try {
+						const url = new URL(finalUrl)
+						const continueParam = url.searchParams.get('continue')
+						if (continueParam) {
+							finalUrl = decodeURIComponent(continueParam)
+							console.log('📍 Извлечена ссылка из consent:', finalUrl)
+						}
+					} catch (e) {
+						console.warn('Не удалось извлечь continue параметр:', e)
+					}
+				}
+
 				// Автоматически вставляем длинную ссылку в основной инпут
-				setInput(data.resolved_url)
+				setInput(finalUrl)
 				setHighlight(true)
 				setTimeout(() => setHighlight(false), 1500)
 
 				// Показываем полученную ссылку для отладки (можно убрать потом)
-				console.log('📍 Полученная ссылка:', data.resolved_url)
+				console.log('📍 Финальная ссылка:', finalUrl)
 
 				alert('✅ Длинная ссылка получена и вставлена в поле ниже!')
 			} else if (data.error) {
