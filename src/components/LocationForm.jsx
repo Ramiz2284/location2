@@ -1,24 +1,6 @@
 import { useState } from 'react'
 import { extractCoordsFromLink } from '../utils/extractCoords'
 
-// Helper: fetch canonical place URL via serverless Places Details endpoint
-async function fetchCanonicalPlaceUrl(placeId, coords) {
-	try {
-		let url = '/api/place-url?'
-		if (placeId) url += `place_id=${encodeURIComponent(placeId)}`
-		else if (coords) url += `lat=${coords.lat}&lng=${coords.lng}`
-		else return null
-		const resp = await fetch(url)
-		if (!resp.ok) return null
-		const data = await resp.json()
-		if (data.url) return data.url
-		return null
-	} catch (e) {
-		console.warn('fetchCanonicalPlaceUrl error', e)
-		return null
-	}
-}
-
 export default function LocationForm({ onAdd }) {
 	const [input, setInput] = useState('')
 	const [name, setName] = useState('')
@@ -27,34 +9,18 @@ export default function LocationForm({ onAdd }) {
 	const [loading, setLoading] = useState(false)
 
 	async function handleAdd() {
-		console.log('🔍 Попытка извлечь координаты из:', input)
 		const coords = await extractCoordsFromLink(input)
-
 		if (!coords) {
-			// Показываем саму ссылку для отладки (первые 100 символов)
 			const preview =
 				input.length > 100 ? input.substring(0, 100) + '...' : input
-			alert(
-				`Не удалось получить координаты из:\n${preview}\n\nПроверь формат ссылки или попробуй скопировать заново.`
-			)
-			console.error('❌ Не удалось извлечь координаты. Ссылка:', input)
+			alert(`Не удалось получить координаты из:\n${preview}`)
 			return
 		}
-
-		console.log('✅ Координаты получены:', coords)
-
 		if (!name.trim()) {
-			alert('Добавь название локации — например "Ахмет Лара"')
+			alert('Добавь название локации')
 			return
 		}
-
-		// ✅ отправляем в App не только координаты, но и имя
-		onAdd({
-			...coords,
-			name,
-		})
-
-		// очистка полей
+		onAdd({ ...coords, name })
 		setInput('')
 		setName('')
 	}
@@ -64,152 +30,78 @@ export default function LocationForm({ onAdd }) {
 			const text = await navigator.clipboard.readText()
 			if (text && text.length > 5 && text !== input) {
 				setInput(text)
-
-				// ✅ эффект подсветки
 				setHighlight(true)
 				setTimeout(() => setHighlight(false), 800)
 			}
-		} catch (e) {}
+		} catch {}
 	}
 
 	async function handleUnshortenLink() {
 		if (!shortLink.trim()) {
-			alert('Вставь короткую ссылку Google Maps!')
+			alert('Вставь короткую ссылку Google Maps')
 			return
 		}
-
 		setLoading(true)
-
 		try {
-			// Используем API unshorten.me с ключом
 			const apiKey = import.meta.env.VITE_UNSHORTEN_API_KEY
 			const apiUrl = `https://unshorten.me/json/${encodeURIComponent(
 				shortLink
 			)}`
-
 			const headers = {}
-			if (apiKey) {
-				headers['Authorization'] = `Token ${apiKey}`
-			}
-
+			if (apiKey) headers['Authorization'] = `Token ${apiKey}`
 			const response = await fetch(apiUrl, { headers })
 			const data = await response.json()
-
 			if (data.success && data.resolved_url) {
 				let finalUrl = data.resolved_url
-
-				// Если это страница consent.google.com, извлекаем настоящую ссылку из параметра continue
 				if (finalUrl.includes('consent.google.com')) {
 					try {
 						const url = new URL(finalUrl)
-						const continueParam = url.searchParams.get('continue')
-						if (continueParam) {
-							finalUrl = decodeURIComponent(continueParam)
-							console.log('📍 Извлечена ссылка из consent:', finalUrl)
-						}
-					} catch (e) {
-						console.warn('Не удалось извлечь continue параметр:', e)
-					}
+						const cont = url.searchParams.get('continue')
+						if (cont) finalUrl = decodeURIComponent(cont)
+					} catch {}
 				}
-
-				// Автоматически вставляем длинную ссылку в основной инпут
 				setInput(finalUrl)
 				setHighlight(true)
 				setTimeout(() => setHighlight(false), 1500)
-
-				// Показываем полученную ссылку для отладки (можно убрать потом)
-				console.log('📍 Финальная ссылка:', finalUrl)
-
-				// iPhone: сразу пробуем извлечь координаты и поставить метку (link-only режим)
 				try {
 					const coords = await extractCoordsFromLink(finalUrl)
 					if (coords) {
-						// Попытка извлечь place_id из ссылки
-						let detectedPlaceId = null
-						try {
-							const u = new URL(finalUrl)
-							const pid =
-								u.searchParams.get('placeid') || u.searchParams.get('place_id')
-							if (pid) detectedPlaceId = pid
-						} catch {}
-
-						// Получаем canonical URL (если удастся) через Places API (serverless) и показываем статус при ошибке
-						try {
-							const canonicalResp = await fetch(
-								`/api/place-url?${
-									detectedPlaceId
-										? `place_id=${encodeURIComponent(detectedPlaceId)}`
-										: `lat=${coords.lat}&lng=${coords.lng}`
-								}`
-							)
-							if (canonicalResp.ok) {
-								const canonicalData = await canonicalResp.json()
-								if (canonicalData.url) {
-									console.log('🌐 Canonical place URL:', canonicalData.url)
-									setInput(canonicalData.url)
-								}
-							} else {
-								let msg = 'Не удалось получить каноническую ссылку места.'
-								try {
-									const errData = await canonicalResp.json()
-									if (errData.status || errData.message)
-										msg += `\nСтатус: ${errData.status || ''} ${
-											errData.message || ''
-										}`
-								} catch {}
-								alert(msg)
-							}
-						} catch (e) {
-							console.warn('Ошибка запроса canonical URL:', e)
-						}
-
-						// Попробуем получить имя из URL, если поле name пустое
-						const deriveNameFromUrl = urlStr => {
+						const deriveName = urlStr => {
 							try {
 								const u = new URL(urlStr)
-								// /maps/place/<NAME>/...
 								const parts = u.pathname.split('/')
 								const idx = parts.findIndex(p => p === 'place')
 								if (idx >= 0 && parts[idx + 1]) {
-									const raw = decodeURIComponent(parts[idx + 1])
-									return raw.replace(/\+/g, ' ')
+									return decodeURIComponent(parts[idx + 1]).replace(/\+/g, ' ')
 								}
-								// Параметр q как имя, если это не координаты
 								const q = u.searchParams.get('q')
-								if (q && !/^-?\d+\.\d+,-?\d+\.\d+$/.test(q)) {
+								if (q && !/^-?\d+\.\d+,-?\d+\.\d+$/.test(q))
 									return decodeURIComponent(q.replace(/\+/g, ' '))
-								}
 							} catch {}
 							return 'Метка'
 						}
-
-						const finalName =
-							(name && name.trim()) || deriveNameFromUrl(finalUrl)
-						// Отправляем наверх
+						const finalName = (name && name.trim()) || deriveName(finalUrl)
 						onAdd({ ...coords, name: finalName })
-						// Очистим name, но оставим ссылку (каноническую или исходную) для просмотра
+						setInput('')
 						setName('')
-						alert('✅ Ссылка получена, метка добавлена на карту')
+						alert('✅ Метка добавлена')
 					} else {
-						alert('✅ Длинная ссылка получена и вставлена — нажми "Добавить"')
+						alert('✅ Длинная ссылка вставлена — нажми "Добавить"')
 					}
-				} catch (err) {
-					console.warn('Автоматическая расстановка метки не удалась:', err)
+				} catch (e) {
 					alert('✅ Длинная ссылка получена — можно нажать "Добавить"')
 				}
 			} else if (data.error) {
 				alert(`Ошибка: ${data.error}`)
 			} else {
-				alert('Не удалось раскрыть ссылку. Попробуй вручную через unshorten.me')
-				// Открываем сайт как fallback
+				alert('Не удалось раскрыть ссылку')
 				window.open(
 					`https://unshorten.me/?url=${encodeURIComponent(shortLink)}`,
 					'_blank'
 				)
 			}
 		} catch (e) {
-			console.error('Ошибка API unshorten.me:', e)
-			alert('Ошибка подключения к API. Открываю сайт вручную...')
+			alert('Ошибка API unshorten.me')
 			window.open(
 				`https://unshorten.me/?url=${encodeURIComponent(shortLink)}`,
 				'_blank'
@@ -221,7 +113,6 @@ export default function LocationForm({ onAdd }) {
 
 	return (
 		<div style={{ marginBottom: '15px' }}>
-			{/* поле для короткой ссылки */}
 			<input
 				style={{
 					width: '300px',
@@ -241,8 +132,6 @@ export default function LocationForm({ onAdd }) {
 			>
 				{loading ? 'Получаю длинную ссылку...' : 'Получить длинную ссылку'}
 			</button>
-
-			{/* поле для ссылки */}
 			<input
 				style={{
 					width: '300px',
@@ -258,8 +147,6 @@ export default function LocationForm({ onAdd }) {
 				onChange={e => setInput(e.target.value)}
 				placeholder='Вставь ссылку Google Maps'
 			/>
-
-			{/* поле для названия локации */}
 			<input
 				style={{
 					width: '300px',
@@ -272,7 +159,6 @@ export default function LocationForm({ onAdd }) {
 				onChange={e => setName(e.target.value)}
 				placeholder='Имя / район / заказчик'
 			/>
-
 			<button onClick={handleAdd}>Добавить</button>
 		</div>
 	)

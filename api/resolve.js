@@ -12,40 +12,52 @@ export default async function handler(req, res) {
 		return
 	}
 	try {
+		console.log('[resolve] incoming', url)
 		const final = await fetchFollow(url)
+		console.log('[resolve] final redirect URL', final)
 		const directCoords = extractFromString(final)
 		if (directCoords) {
+			console.log('[resolve] direct coords from final URL', directCoords)
 			res.status(200).json({ source: 'redirect', coords: directCoords })
 			return
 		}
 		// Try resolving via CID if present (link-only, no text). Some q/ftid links include a CID in hex.
 		const cid = extractCid(url) || extractCid(final)
+		if (cid) console.log('[resolve] cid detected', cid)
 		if (cid) {
 			const cidUrl = `https://maps.google.com/?cid=${cid}`
+			console.log('[resolve] cid url', cidUrl)
 			const cidFinal = await fetchFollow(cidUrl)
+			console.log('[resolve] cid final', cidFinal)
 			const cidCoords = extractFromString(cidFinal)
 			if (cidCoords) {
+				console.log('[resolve] cid direct coords', cidCoords)
 				res.status(200).json({ source: 'cid', coords: cidCoords })
 				return
 			}
 			const cidEmbed = appendParam(cidFinal, 'output', 'embed')
+			console.log('[resolve] cid embed url', cidEmbed)
 			const cidHtml = await fetchText(cidEmbed)
 			const cidHtmlCoords = extractFromString(cidHtml)
 			if (cidHtmlCoords) {
+				console.log('[resolve] cid embed coords', cidHtmlCoords)
 				res.status(200).json({ source: 'cid-embed', coords: cidHtmlCoords })
 				return
 			}
 		}
 		// Try embed
 		const embedUrl = appendParam(final, 'output', 'embed')
+		console.log('[resolve] embed url', embedUrl)
 		const html = await fetchText(embedUrl)
 		const htmlCoords = extractFromString(html)
 		if (htmlCoords) {
+			console.log('[resolve] embed coords', htmlCoords)
 			res.status(200).json({ source: 'embed', coords: htmlCoords })
 			return
 		}
 		res.status(200).json({ source: 'none', coords: null })
 	} catch (e) {
+		console.log('[resolve] exception', e)
 		res.status(500).json({ error: e.message })
 	}
 }
