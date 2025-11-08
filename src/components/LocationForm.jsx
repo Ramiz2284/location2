@@ -102,7 +102,45 @@ export default function LocationForm({ onAdd }) {
 				// Показываем полученную ссылку для отладки (можно убрать потом)
 				console.log('📍 Финальная ссылка:', finalUrl)
 
-				alert('✅ Длинная ссылка получена и вставлена в поле ниже!')
+				// iPhone: сразу пробуем извлечь координаты и поставить метку (link-only режим)
+				try {
+					const coords = await extractCoordsFromLink(finalUrl)
+					if (coords) {
+						// Попробуем получить имя из URL, если поле name пустое
+						const deriveNameFromUrl = urlStr => {
+							try {
+								const u = new URL(urlStr)
+								// /maps/place/<NAME>/...
+								const parts = u.pathname.split('/')
+								const idx = parts.findIndex(p => p === 'place')
+								if (idx >= 0 && parts[idx + 1]) {
+									const raw = decodeURIComponent(parts[idx + 1])
+									return raw.replace(/\+/g, ' ')
+								}
+								// Параметр q как имя, если это не координаты
+								const q = u.searchParams.get('q')
+								if (q && !/^-?\d+\.\d+,-?\d+\.\d+$/.test(q)) {
+									return decodeURIComponent(q.replace(/\+/g, ' '))
+								}
+							} catch {}
+							return 'Метка'
+						}
+
+						const finalName =
+							(name && name.trim()) || deriveNameFromUrl(finalUrl)
+						// Отправляем наверх
+						onAdd({ ...coords, name: finalName })
+						// Очистим поля, так как метка уже добавлена
+						setInput('')
+						setName('')
+						alert('✅ Ссылка получена, метка добавлена на карту')
+					} else {
+						alert('✅ Длинная ссылка получена и вставлена — нажми "Добавить"')
+					}
+				} catch (err) {
+					console.warn('Автоматическая расстановка метки не удалась:', err)
+					alert('✅ Длинная ссылка получена — можно нажать "Добавить"')
+				}
 			} else if (data.error) {
 				alert(`Ошибка: ${data.error}`)
 			} else {
