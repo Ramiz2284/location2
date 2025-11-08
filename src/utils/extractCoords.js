@@ -1,8 +1,4 @@
-import {
-	getCoordsByAddress,
-	getCoordsByPlaceId,
-	getCoordsByTextQuery,
-} from './googleMapsApi'
+import { getCoordsByPlaceId } from './googleMapsApi'
 
 // Показываем алерт (для мобильного без DevTools) и логируем в консоль
 function notifyError(msg, detail) {
@@ -157,18 +153,18 @@ export async function extractCoordsFromLink(link) {
 				if (wrapped) {
 					const inner = decodeURIComponent(wrapped)
 					console.log('unwrap from finalUrl:', inner)
-					// 1) Пытаемся как place_id
+					// 1) Пытаемся как place_id (place_id допустим, он встроен в ссылку)
 					const innerPlaceId = inner.match(/placeid=([^&]+)/i)
 					if (innerPlaceId) {
 						const innerPlaceCoords = await getCoordsByPlaceId(innerPlaceId[1])
 						if (innerPlaceCoords) return innerPlaceCoords
 					}
-					// 2) Пробуем извлечь координаты из URL
+					// 2) Пробуем извлечь координаты напрямую из URL
 					const innerCoords = extractCoordsFromRegularLink(inner)
 					if (innerCoords) return innerCoords
-					// 3) Как адрес
-					const innerApi = await getCoordsByAddress(inner)
-					if (innerApi) return innerApi
+					// 3) Пробуем serverless resolve (HTML/parsing) без текстового геокодирования
+					const innerResolved = await resolveLinkForCoords(inner)
+					if (innerResolved) return innerResolved
 				}
 			} catch (_) {}
 			// 1.1. Сначала ищем placeId
@@ -185,12 +181,12 @@ export async function extractCoordsFromLink(link) {
 			const coords = extractCoordsFromRegularLink(fullUrl)
 			console.log('extractCoordsFromRegularLink (после unshorten):', coords)
 			if (coords) return coords
-			// 1.3. Потом пробуем как адрес
-			const apiCoords = await getCoordsByAddress(fullUrl)
-			console.log('getCoordsByAddress (после unshorten):', apiCoords)
-			if (apiCoords) return apiCoords
+			// 1.3. Serverless resolve (парсинг embed / финального URL)
+			const resolvedCoords = await resolveLinkForCoords(fullUrl)
+			console.log('resolveLinkForCoords (после unshorten):', resolvedCoords)
+			if (resolvedCoords) return resolvedCoords
 			notifyError(
-				'Не удалось извлечь координаты из раскрытой ссылки. Скопируй точку из Google Maps ещё раз.'
+				'Не удалось извлечь координаты из раскрытой ссылки (link-only режим). Скопируй точку из Google Maps ещё раз.'
 			)
 			return null
 		} catch (e) {
@@ -221,46 +217,38 @@ export async function extractCoordsFromLink(link) {
 		console.log('Найден ftid:', ftidMatch[1])
 	}
 
-	// 3. Потом координаты
+	// 3. Потом координаты напрямую
 	const coords = extractCoordsFromRegularLink(link)
 	console.log('extractCoordsFromRegularLink:', coords)
 	if (coords) return coords
 
-	// 4. Если есть параметр q с текстом (название места), пробуем через Geocoding API
+	// 4. Если есть параметр q, НЕ геокодируем текст — пробуем только serverless resolve
 	try {
 		const url = new URL(link)
 		const qParam = url.searchParams.get('q')
-		if (qParam && !/^-?\d+\.\d+,-?\d+\.\d+$/.test(qParam)) {
-			// Это не координаты, а название/адрес
-			console.log('Найден параметр q с текстом:', qParam)
-
-			// Декодируем URL-encoded символы (например, + в пробел)
-			const decodedQ = decodeURIComponent(qParam.replace(/\+/g, ' '))
-			console.log('Декодированный q:', decodedQ)
-
-			const apiCoords = await getCoordsByAddress(decodedQ)
-			if (apiCoords) {
-				console.log('getCoordsByAddress (из q):', apiCoords)
-				return apiCoords
-			}
-
-			// Если геокодирование не дало результат — пробуем Places Text Search
-			const textCoords = await getCoordsByTextQuery(decodedQ)
-			if (textCoords) {
-				console.log('getCoordsByTextQuery (из q):', textCoords)
-				return textCoords
+		if (qParam) {
+			console.log(
+				'Найден параметр q (link-only режим, без геокодирования):',
+				qParam
+			)
+			const resolvedFromQ = await resolveLinkForCoords(link)
+			if (resolvedFromQ) {
+				console.log('resolveLinkForCoords (из q):', resolvedFromQ)
+				return resolvedFromQ
 			}
 		}
 	} catch (e) {
 		console.log('Ошибка при проверке параметра q:', e)
 	}
 
-	// 5. Потом адрес из всей ссылки
-	const apiCoords = await getCoordsByAddress(link)
-	console.log('getCoordsByAddress:', apiCoords)
-	if (apiCoords) return apiCoords
+	// 5. Финальный fallback: serverless resolve ещё раз (на случай отсутствия q)
+	const finalResolved = await resolveLinkForCoords(link)
+	if (finalResolved) {
+		console.log('resolveLinkForCoords (final fallback):', finalResolved)
+		return finalResolved
+	}
 	notifyError(
-		'Не удалось получить координаты ни напрямую из ссылки, ни через Geocoding API. Проверь формат: открой точку Google Maps и скопируй адрес полностью.'
+		'Не удалось получить координаты в link-only режиме. Проверь: открой точку Google Maps, скопируй именно адрес страницы места (с !3d...!4d...).'
 	)
 	return null
 }
@@ -362,4 +350,25 @@ export async function unshortenGoogleLink(shortUrl) {
 	const response = await fetch(apiUrl)
 	const data = await response.json()
 	return data.finalUrl // это уже длинная ссылка Google Maps
+}
+
+// Serverless link-only resolver (парсит конечный URL и embed HTML)
+async function resolveLinkForCoords(originalLink) {
+	try {
+		const apiUrl = `/api/resolve?url=${encodeURIComponent(originalLink)}`
+		const response = await fetch(apiUrl)
+		if (!response.ok) {
+			console.log('resolveLinkForCoords: response not ok', response.status)
+			return null
+		}
+		const data = await response.json()
+		if (data && data.coords) {
+			return data.coords
+		}
+		console.log('resolveLinkForCoords: нет coords в ответе', data)
+		return null
+	} catch (e) {
+		console.log('resolveLinkForCoords: ошибка', e)
+		return null
+	}
 }
