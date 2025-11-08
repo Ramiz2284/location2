@@ -21,6 +21,11 @@ export default async function handler(req, res) {
 			const revUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`
 			const revResp = await fetch(revUrl)
 			const revData = await revResp.json()
+			console.log(
+				'[place-url] reverse status:',
+				revData.status,
+				revData.error_message
+			)
 			if (
 				revData.status === 'OK' &&
 				revData.results &&
@@ -28,6 +33,12 @@ export default async function handler(req, res) {
 			) {
 				// Take first result with place_id
 				finalPlaceId = revData.results[0].place_id
+			} else {
+				return res.status(502).json({
+					error: 'Reverse geocode failed',
+					status: revData.status,
+					message: revData.error_message,
+				})
 			}
 		}
 
@@ -40,16 +51,24 @@ export default async function handler(req, res) {
 		const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${finalPlaceId}&fields=url&key=${apiKey}`
 		const detResp = await fetch(detailsUrl)
 		const detData = await detResp.json()
+		console.log(
+			'[place-url] details status:',
+			detData.status,
+			detData.error_message
+		)
 		if (detData.status !== 'OK') {
-			res
-				.status(500)
-				.json({ error: 'Places Details failed', status: detData.status })
-			return
+			return res.status(502).json({
+				error: 'Places Details failed',
+				status: detData.status,
+				message: detData.error_message,
+			})
 		}
 		const canonicalUrl = detData.result && detData.result.url
 		if (!canonicalUrl) {
-			res.status(404).json({ error: 'No canonical url in result' })
-			return
+			return res.status(404).json({
+				error: 'No canonical url in result',
+				status: detData.status,
+			})
 		}
 		res.status(200).json({ url: canonicalUrl, placeId: finalPlaceId })
 	} catch (e) {

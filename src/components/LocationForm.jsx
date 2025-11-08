@@ -133,15 +133,34 @@ export default function LocationForm({ onAdd }) {
 							if (pid) detectedPlaceId = pid
 						} catch {}
 
-						// Получаем canonical URL (если удастся) через Places API (serverless)
-						const canonicalUrl = await fetchCanonicalPlaceUrl(
-							detectedPlaceId,
-							coords
-						)
-						if (canonicalUrl) {
-							console.log('🌐 Canonical place URL:', canonicalUrl)
-							// Заменяем инпут на каноническую ссылку для дальнейших копирований
-							setInput(canonicalUrl)
+						// Получаем canonical URL (если удастся) через Places API (serverless) и показываем статус при ошибке
+						try {
+							const canonicalResp = await fetch(
+								`/api/place-url?${
+									detectedPlaceId
+										? `place_id=${encodeURIComponent(detectedPlaceId)}`
+										: `lat=${coords.lat}&lng=${coords.lng}`
+								}`
+							)
+							if (canonicalResp.ok) {
+								const canonicalData = await canonicalResp.json()
+								if (canonicalData.url) {
+									console.log('🌐 Canonical place URL:', canonicalData.url)
+									setInput(canonicalData.url)
+								}
+							} else {
+								let msg = 'Не удалось получить каноническую ссылку места.'
+								try {
+									const errData = await canonicalResp.json()
+									if (errData.status || errData.message)
+										msg += `\nСтатус: ${errData.status || ''} ${
+											errData.message || ''
+										}`
+								} catch {}
+								alert(msg)
+							}
+						} catch (e) {
+							console.warn('Ошибка запроса canonical URL:', e)
 						}
 
 						// Попробуем получить имя из URL, если поле name пустое
