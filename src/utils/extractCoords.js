@@ -258,7 +258,8 @@ export async function extractCoordsFromLink(link) {
 				'Найден текстовый q, пробуем geocodeAddress (Maps JS API):',
 				qParam
 			)
-			const geocoded = await geocodeAddress(decodeURIComponent(qParam))
+			// showDebugAlert=true для тестирования — покажет алерты с ответом API
+			const geocoded = await geocodeAddress(decodeURIComponent(qParam), true)
 			if (geocoded) {
 				console.log('geocodeAddress успешно:', geocoded)
 				return geocoded
