@@ -43,23 +43,23 @@ export default function LocationForm({ onAdd }) {
 		} catch (e) {}
 	}
 
-	function handleShortLinkPopup() {
+	function handleUnshortenLink() {
 		if (!shortLink.trim()) {
 			alert('Вставь короткую ссылку Google Maps!')
 			return
 		}
-		// Открываем попап с короткой ссылкой
-		const win = window.open(shortLink, '_blank', 'width=600,height=600')
-		if (!win) {
-			alert('Не удалось открыть попап. Разреши всплывающие окна!')
-			return
-		}
+		// Открываем unshorten.me с короткой ссылкой
+		const unshortenUrl = `https://unshorten.me/?url=${encodeURIComponent(
+			shortLink
+		)}`
+		window.open(unshortenUrl, '_blank')
+
 		// Инструкция для пользователя
 		setTimeout(() => {
 			alert(
-				'В открывшемся окне скопируй ссылку из адресной строки и вставь её в поле "Вставь ссылку Google Maps" ниже.'
+				'В открывшемся окне скопируй раскрытую длинную ссылку и вставь её в поле "Вставь ссылку Google Maps" ниже.'
 			)
-		}, 1000)
+		}, 500)
 	}
 
 	return (
@@ -77,8 +77,8 @@ export default function LocationForm({ onAdd }) {
 				onChange={e => setShortLink(e.target.value)}
 				placeholder='Вставь короткую ссылку (maps.app.goo.gl)'
 			/>
-			<button style={{ marginBottom: '12px' }} onClick={handleShortLinkPopup}>
-				Открыть попап для копирования длинной ссылки
+			<button style={{ marginBottom: '12px' }} onClick={handleUnshortenLink}>
+				Открыть в unshorten.me
 			</button>
 
 			{/* поле для ссылки */}
