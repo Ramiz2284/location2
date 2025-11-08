@@ -1,6 +1,24 @@
 import { useState } from 'react'
 import { extractCoordsFromLink } from '../utils/extractCoords'
 
+// Helper: fetch canonical place URL via serverless Places Details endpoint
+async function fetchCanonicalPlaceUrl(placeId, coords) {
+	try {
+		let url = '/api/place-url?'
+		if (placeId) url += `place_id=${encodeURIComponent(placeId)}`
+		else if (coords) url += `lat=${coords.lat}&lng=${coords.lng}`
+		else return null
+		const resp = await fetch(url)
+		if (!resp.ok) return null
+		const data = await resp.json()
+		if (data.url) return data.url
+		return null
+	} catch (e) {
+		console.warn('fetchCanonicalPlaceUrl error', e)
+		return null
+	}
+}
+
 export default function LocationForm({ onAdd }) {
 	const [input, setInput] = useState('')
 	const [name, setName] = useState('')
@@ -106,6 +124,26 @@ export default function LocationForm({ onAdd }) {
 				try {
 					const coords = await extractCoordsFromLink(finalUrl)
 					if (coords) {
+						// Попытка извлечь place_id из ссылки
+						let detectedPlaceId = null
+						try {
+							const u = new URL(finalUrl)
+							const pid =
+								u.searchParams.get('placeid') || u.searchParams.get('place_id')
+							if (pid) detectedPlaceId = pid
+						} catch {}
+
+						// Получаем canonical URL (если удастся) через Places API (serverless)
+						const canonicalUrl = await fetchCanonicalPlaceUrl(
+							detectedPlaceId,
+							coords
+						)
+						if (canonicalUrl) {
+							console.log('🌐 Canonical place URL:', canonicalUrl)
+							// Заменяем инпут на каноническую ссылку для дальнейших копирований
+							setInput(canonicalUrl)
+						}
+
 						// Попробуем получить имя из URL, если поле name пустое
 						const deriveNameFromUrl = urlStr => {
 							try {
@@ -130,8 +168,7 @@ export default function LocationForm({ onAdd }) {
 							(name && name.trim()) || deriveNameFromUrl(finalUrl)
 						// Отправляем наверх
 						onAdd({ ...coords, name: finalName })
-						// Очистим поля, так как метка уже добавлена
-						setInput('')
+						// Очистим name, но оставим ссылку (каноническую или исходную) для просмотра
 						setName('')
 						alert('✅ Ссылка получена, метка добавлена на карту')
 					} else {
