@@ -209,6 +209,14 @@ export async function extractCoordsFromLink(link) {
 		)
 	}
 
+	// 2.5. Проверяем ftid (feature ID) - используется в некоторых ссылках Google Maps
+	const ftidMatch = link.match(/[?&]ftid=([^&]+)/i)
+	if (ftidMatch) {
+		// ftid это base64 encoded place_id, можно попробовать декодировать
+		// Или просто используем как есть через Geocoding API с адресом из q
+		console.log('Найден ftid:', ftidMatch[1])
+	}
+
 	// 3. Потом координаты
 	const coords = extractCoordsFromRegularLink(link)
 	console.log('extractCoordsFromRegularLink:', coords)
@@ -221,7 +229,12 @@ export async function extractCoordsFromLink(link) {
 		if (qParam && !/^-?\d+\.\d+,-?\d+\.\d+$/.test(qParam)) {
 			// Это не координаты, а название/адрес
 			console.log('Найден параметр q с текстом:', qParam)
-			const apiCoords = await getCoordsByAddress(qParam)
+
+			// Декодируем URL-encoded символы (например, + в пробел)
+			const decodedQ = decodeURIComponent(qParam.replace(/\+/g, ' '))
+			console.log('Декодированный q:', decodedQ)
+
+			const apiCoords = await getCoordsByAddress(decodedQ)
 			if (apiCoords) {
 				console.log('getCoordsByAddress (из q):', apiCoords)
 				return apiCoords
