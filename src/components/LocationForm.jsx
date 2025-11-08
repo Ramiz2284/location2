@@ -9,11 +9,21 @@ export default function LocationForm({ onAdd }) {
 	const [loading, setLoading] = useState(false)
 
 	async function handleAdd() {
+		console.log('🔍 Попытка извлечь координаты из:', input)
 		const coords = await extractCoordsFromLink(input)
+
 		if (!coords) {
-			alert('Не удалось получить координаты. Убедись, что ссылка Google Maps.')
+			// Показываем саму ссылку для отладки (первые 100 символов)
+			const preview =
+				input.length > 100 ? input.substring(0, 100) + '...' : input
+			alert(
+				`Не удалось получить координаты из:\n${preview}\n\nПроверь формат ссылки или попробуй скопировать заново.`
+			)
+			console.error('❌ Не удалось извлечь координаты. Ссылка:', input)
 			return
 		}
+
+		console.log('✅ Координаты получены:', coords)
 
 		if (!name.trim()) {
 			alert('Добавь название локации — например "Ахмет Лара"')
@@ -72,6 +82,10 @@ export default function LocationForm({ onAdd }) {
 				setInput(data.resolved_url)
 				setHighlight(true)
 				setTimeout(() => setHighlight(false), 1500)
+
+				// Показываем полученную ссылку для отладки (можно убрать потом)
+				console.log('📍 Полученная ссылка:', data.resolved_url)
+
 				alert('✅ Длинная ссылка получена и вставлена в поле ниже!')
 			} else if (data.error) {
 				alert(`Ошибка: ${data.error}`)

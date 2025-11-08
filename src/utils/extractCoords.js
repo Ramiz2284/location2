@@ -3,9 +3,7 @@ import { getCoordsByAddress, getCoordsByPlaceId } from './googleMapsApi'
 // Показываем алерт (для мобильного без DevTools) и логируем в консоль
 function notifyError(msg, detail) {
 	console.warn('[coords:error]', msg, detail || '')
-	try {
-		alert(msg)
-	} catch (_) {}
+	// Убираем alert отсюда — будем показывать только в конце
 }
 
 async function extractCoordsFromShortLink(shortLink) {
