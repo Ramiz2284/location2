@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { extractCoordsFromLink } from '../utils/extractCoords'
+import { encodeCoords } from '../utils/shortlink'
 
 export default function LocationForm({ onAdd }) {
 	const [input, setInput] = useState('')
@@ -21,6 +22,14 @@ export default function LocationForm({ onAdd }) {
 			return
 		}
 		onAdd({ ...coords, name })
+		try {
+			const token = encodeCoords(coords)
+			if (token) {
+				const shortUrl = `${window.location.origin}/api/short?t=${token}`
+				await navigator.clipboard?.writeText?.(shortUrl)
+				alert(`Короткая ссылка скопирована:\n${shortUrl}`)
+			}
+		} catch {}
 		setInput('')
 		setName('')
 	}
@@ -53,6 +62,17 @@ export default function LocationForm({ onAdd }) {
 			const data = await response.json()
 			if (data.success && data.resolved_url) {
 				let finalUrl = data.resolved_url
+				// 1) Разворачиваем обёртки вида https://www.google.com/url?...&q=<real>
+				try {
+					const u = new URL(finalUrl)
+					const wrapped =
+						u.searchParams.get('q') ||
+						u.searchParams.get('url') ||
+						u.searchParams.get('link')
+					if (wrapped && /^https?:/i.test(wrapped)) {
+						finalUrl = decodeURIComponent(wrapped)
+					}
+				} catch {}
 				if (finalUrl.includes('consent.google.com')) {
 					try {
 						const url = new URL(finalUrl)
@@ -82,6 +102,19 @@ export default function LocationForm({ onAdd }) {
 						}
 						const finalName = (name && name.trim()) || deriveName(finalUrl)
 						onAdd({ ...coords, name: finalName })
+						try {
+							const token = encodeCoords(coords)
+							if (token) {
+								const shortUrl = `${window.location.origin}/api/short?t=${token}`
+								await navigator.clipboard?.writeText?.(shortUrl)
+								alert(
+									`✅ Метка добавлена\nКороткая ссылка скопирована:\n${shortUrl}`
+								)
+								setInput('')
+								setName('')
+								return
+							}
+						} catch {}
 						setInput('')
 						setName('')
 						alert('✅ Метка добавлена')
