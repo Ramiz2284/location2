@@ -18,13 +18,6 @@ const mapOptions = {
 	streetViewControl: false,
 	fullscreenControl: false,
 	mapTypeControl: false,
-	styles: [
-		{
-			featureType: 'all',
-			elementType: 'labels.text.fill',
-			stylers: [{ color: '#ffffff' }],
-		},
-	],
 }
 
 export default function MapView({ points, route }) {
