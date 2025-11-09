@@ -13,6 +13,16 @@
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
+
+  <!-- Eruda mobile DevTools: доступна при ?debug=1 в URL -->
+  <script>
+    if (window.location.search.includes('debug=1') || window.location.hostname === 'localhost') {
+      const script = document.createElement('script')
+      script.src = 'https://cdn.jsdelivr.net/npm/eruda'
+      script.onload = () => eruda.init()
+      document.head.appendChild(script)
+    }
+  </script>
 </body>
 
 </html>
