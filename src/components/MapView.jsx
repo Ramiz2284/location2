@@ -8,7 +8,23 @@ import {
 
 const containerStyle = {
 	width: '100%',
-	height: '400px',
+	height: '100%',
+	minHeight: '400px',
+}
+
+const mapOptions = {
+	disableDefaultUI: false,
+	zoomControl: true,
+	streetViewControl: false,
+	fullscreenControl: false,
+	mapTypeControl: false,
+	styles: [
+		{
+			featureType: 'all',
+			elementType: 'labels.text.fill',
+			stylers: [{ color: '#ffffff' }],
+		},
+	],
 }
 
 export default function MapView({ points, route }) {
@@ -25,6 +41,7 @@ export default function MapView({ points, route }) {
 			mapContainerStyle={containerStyle}
 			center={defaultPosition}
 			zoom={12}
+			options={mapOptions}
 		>
 			{points.map((p, i) => (
 				<div key={i}>
