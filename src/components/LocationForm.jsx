@@ -153,6 +153,7 @@ export default function LocationForm({ onAdd }) {
 					border: '1px solid #ff9800',
 					display: 'block',
 					marginBottom: '8px',
+					fontSize: '16px',
 				}}
 				value={shortLink}
 				onChange={e => setShortLink(e.target.value)}
@@ -173,6 +174,7 @@ export default function LocationForm({ onAdd }) {
 					transition: '0.3s',
 					display: 'block',
 					marginBottom: '8px',
+					fontSize: '16px',
 				}}
 				value={input}
 				onFocus={handlePasteFromClipboard}
@@ -187,6 +189,7 @@ export default function LocationForm({ onAdd }) {
 					border: '1px solid #ccc',
 					display: 'block',
 					marginBottom: '8px',
+					fontSize: '16px',
 				}}
 				value={name}
 				onChange={e => setName(e.target.value)}
