@@ -259,7 +259,7 @@ export async function extractCoordsFromLink(link) {
 				qParam
 			)
 			// showDebugAlert=true для тестирования — покажет алерты с ответом API
-			const geocoded = await geocodeAddress(decodeURIComponent(qParam), true)
+			const geocoded = await geocodeAddress(decodeURIComponent(qParam))
 			if (geocoded) {
 				console.log('geocodeAddress успешно:', geocoded)
 				return geocoded
