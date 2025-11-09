@@ -1,4 +1,4 @@
-import { getCoordsByPlaceId } from './googleMapsApi'
+import { geocodeAddress, getCoordsByPlaceId } from './googleMapsApi'
 
 // Показываем алерт (для мобильного без DevTools) и логируем в консоль
 function notifyError(msg, detail) {
