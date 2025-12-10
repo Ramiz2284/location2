@@ -89,3 +89,36 @@ input:focus {
 input::placeholder {
 	color: var(--text-secondary);
 }
+
+/* Мобильная оптимизация */
+@supports (padding: max(0px)) {
+	body {
+		padding-left: max(12px, env(safe-area-inset-left));
+		padding-right: max(12px, env(safe-area-inset-right));
+		padding-bottom: max(12px, env(safe-area-inset-bottom));
+	}
+}
+
+/* Отключаем zoom при фокусе на мобильных */
+@media (hover: none) and (pointer: coarse) {
+	input,
+	button,
+	select,
+	textarea {
+		font-size: 16px !important; /* Предотвращает зум на iOS */
+	}
+
+	button {
+		cursor: auto; /* Вместо pointer на мобильных */
+		-webkit-tap-highlight-color: rgba(59, 130, 246, 0.3);
+		-webkit-touch-callout: none;
+	}
+
+	/* Улучшенные touch-области на мобильных */
+	button,
+	input[type='text'],
+	select {
+		min-height: 44px; /* Рекомендуемый минимум для iOS */
+		min-width: 44px;
+	}
+}

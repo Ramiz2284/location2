@@ -147,6 +147,28 @@ export default function App() {
 		localStorage.setItem('points', JSON.stringify(points))
 	}, [points])
 
+	// ✅ Подсказка по доступу с мобильного (localhost)
+	useEffect(() => {
+		if (
+			window.location.hostname === 'localhost' ||
+			window.location.hostname === '127.0.0.1'
+		) {
+			// Получаем IP адрес машины через fetch
+			fetch('https://api.ipify.org?format=json')
+				.then(r => r.json())
+				.then(data => {
+					const port = window.location.port || '5173'
+					const mobileUrl = `http://${data.ip}:${port}`
+					console.log(`📱 Для доступа с мобильного откройте: ${mobileUrl}`)
+				})
+				.catch(() => {
+					console.log(
+						'💡 Найдите IP адрес компьютера и откройте: http://<ваш_ip>:5173'
+					)
+				})
+		}
+	}, [])
+
 	// ✅ Добавить точку (lat, lng, name)
 	function addPoint(point) {
 		setPoints(prev => [...prev, point])
