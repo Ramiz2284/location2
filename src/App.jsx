@@ -139,6 +139,8 @@ export default function App() {
 	const [start, setStart] = useState('gps')
 	const [gps, setGps] = useState(null)
 	const [route, setRoute] = useState([])
+	const [editingIndex, setEditingIndex] = useState(null)
+	const [editingName, setEditingName] = useState('')
 
 	// ✅ Сохраняем точки
 	useEffect(() => {
@@ -152,6 +154,30 @@ export default function App() {
 
 	function deletePoint(index) {
 		setPoints(prev => prev.filter((_, i) => i !== index))
+	}
+
+	function updatePointName(index, newName) {
+		setPoints(prev =>
+			prev.map((p, i) => (i === index ? { ...p, name: newName } : p))
+		)
+	}
+
+	function startEditingName(index) {
+		setEditingIndex(index)
+		setEditingName(points[index].name)
+	}
+
+	function saveEditingName(index) {
+		if (editingName.trim()) {
+			updatePointName(index, editingName)
+		}
+		setEditingIndex(null)
+		setEditingName('')
+	}
+
+	function cancelEditingName() {
+		setEditingIndex(null)
+		setEditingName('')
 	}
 
 	function clearPoints() {
@@ -284,9 +310,39 @@ export default function App() {
 								}}
 							>
 								<div style={styles.pointInfo}>
-									<div style={styles.pointName}>
-										{index + 1}. {point.name}
-									</div>
+									{editingIndex === index ? (
+										<input
+											autoFocus
+											type='text'
+											value={editingName}
+											onChange={e => setEditingName(e.target.value)}
+											onBlur={() => saveEditingName(index)}
+											onKeyDown={e => {
+												if (e.key === 'Enter') saveEditingName(index)
+												if (e.key === 'Escape') cancelEditingName()
+											}}
+											style={{
+												...styles.input,
+												marginBottom: '2px',
+												padding: '6px 8px',
+												fontSize: '14px',
+											}}
+										/>
+									) : (
+										<div
+											style={{
+												...styles.pointName,
+												cursor: 'pointer',
+												transition: 'color 0.2s ease',
+											}}
+											onClick={() => startEditingName(index)}
+											onMouseEnter={e => (e.target.style.color = '#3B82F6')}
+											onMouseLeave={e => (e.target.style.color = '#ffffff')}
+											title='Клик для редактирования'
+										>
+											{index + 1}. {point.name}
+										</div>
+									)}
 									<div style={styles.pointCoords}>
 										{point.lat.toFixed(6)}, {point.lng.toFixed(6)}
 									</div>
